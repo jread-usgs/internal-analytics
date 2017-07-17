@@ -1,36 +1,56 @@
 #' Creates templated html for each project
 library(dplyr)
 publish.projectpage <- function(viz = as.viz("projectPages")) {
-  
+
   deps <- readDepends(viz)
-  
+
   projects <- deps[['project_table']] # get projects from deps
-  
+  links <- deps[['project_links']] # ordered urls for projects
+
   img.files <- list(
-    month_sessions = deps[['viz_month_sessions']],
+    new_vs_returning_year = deps[['new_vs_returning_year']],
+    new_vs_returning_month = deps[['new_vs_returning_month']],
+    new_vs_returning_week = deps[['new_vs_returning_week']],
     year_line_sessions = deps[['viz_y_sessions']],
     month_line_sessions = deps[['viz_m_sessions']],
     week_line_sessions = deps[['viz_w_sessions']],
-    day_line_sessions = deps[['viz_d_sessions']],
-    device_type = deps[['viz_device_type']],
-    source_counts = deps[['viz_source']],
-    viz_geo_apps = deps[["viz_geo_apps"]],
-    timeDayUse_app = deps[["timeDayUse_app"]]
+    viz_device_type_year = deps[['viz_device_type_year']],
+    viz_device_type_month = deps[['viz_device_type_month']],
+    viz_device_type_week = deps[['viz_device_type_week']],
+    viz_source_year = deps[['viz_source_year']],
+    viz_source_month = deps[['viz_source_month']],
+    viz_source_week = deps[['viz_source_week']],
+    viz_geo_apps_year = deps[["viz_geo_apps_year"]],
+    viz_geo_apps_month = deps[["viz_geo_apps_month"]],
+    viz_geo_apps_week = deps[["viz_geo_apps_week"]],
+    timeDayUse_app_year = deps[["timeDayUse_app_year"]],
+    timeDayUse_app_month = deps[["timeDayUse_app_month"]],
+    timeDayUse_app_week = deps[["timeDayUse_app_week"]]
   )
-  
-  table.files <- deps[["app_time"]]
-  
+
+  table.files <- rbind(deps[["app_time_year"]],
+                       deps[["app_time_month"]],
+                       deps[["app_time_week"]])
+
   for (i in 1:nrow(projects)) {
     proj <- projects[i,]
+
+
     viewID <- proj$viewID
     # get relative paths for images
-    
+
     table.data <- filter(table.files, id == viewID)
-    table.html <- readChar(table.data$loc, file.info(table.data$loc)$size)
-    
+    table.html <- list()
+    table.html["year"] <- readChar(table.data$loc[table.data$type == "mean_time_year"],
+                                   file.info(table.data$loc[table.data$type == "mean_time_year"])$size)
+    table.html["month"] <- readChar(table.data$loc[table.data$type == "mean_time_month"],
+                                   file.info(table.data$loc[table.data$type == "mean_time_month"])$size)
+    table.html["week"] <- readChar(table.data$loc[table.data$type == "mean_time_week"],
+                                   file.info(table.data$loc[table.data$type == "mean_time_week"])$size)
+
     proj.imgs <- sapply(img.files, function(x){
       img <- "missingImg"
-      
+
       row <- filter(x, id == viewID)
       if (nrow(row) > 0) {
         img <- list(
@@ -46,7 +66,23 @@ publish.projectpage <- function(viz = as.viz("projectPages")) {
 
       return(img.out)
     })
-    
+
+    j <- 1
+    while (j <= length(links)) {
+      if (links[[j]][["longName"]] == proj[["longName"]]) {
+        break
+      }
+      j <- j + 1
+    }
+    prevLink <- NULL
+    if (j>1) {
+      prevLink <- links[[j-1]][['url']]
+    }
+    nextLink <- NULL
+    if (j<nrow(projects)) {
+      nextLink <- links[[j+1]][['url']]
+    }
+
     sectionId <- paste0(viewID, "-section")
     contents <- list(
       id = sectionId,
@@ -59,24 +95,41 @@ publish.projectpage <- function(viz = as.viz("projectPages")) {
           project_name = proj$longName,
           project_description = proj$description,
           project_URL = proj$websiteUrl,
-          monthly_users_chart = proj.imgs[['month_sessions']],
+          project_contact = proj$projectContact,
+          project_contact_email = proj$projectContactEmail,
+          analytics_contact = proj$analyticsContact,
+          analytics_contact_email = proj$analyticsContactEmail,
+          new_vs_returning_year = proj.imgs[['new_vs_returning_year']],
+          new_vs_returning_month = proj.imgs[['new_vs_returning_month']],
+          new_vs_returning_week = proj.imgs[['new_vs_returning_week']],
           year_line_sessions = proj.imgs[['year_line_sessions']],
           month_line_sessions = proj.imgs[['month_line_sessions']],
           week_line_sessions = proj.imgs[['week_line_sessions']],
-          day_line_sessions = proj.imgs[['day_line_sessions']],
-          device_type = proj.imgs[['device_type']],
-          source_counts = proj.imgs[['source_counts']],
-          viz_geo_apps = proj.imgs[["viz_geo_apps"]],
-          timeDayUse_app = proj.imgs[["timeDayUse_app"]],
-          app_time = table.html
+          viz_device_type_year = proj.imgs[['viz_device_type_year']],
+          viz_device_type_month = proj.imgs[['viz_device_type_month']],
+          viz_device_type_week = proj.imgs[['viz_device_type_week']],
+          viz_source_year = proj.imgs[['viz_source_year']],
+          viz_source_month = proj.imgs[['viz_source_month']],
+          viz_source_week = proj.imgs[['viz_source_week']],
+          viz_geo_apps_year = proj.imgs[["viz_geo_apps_year"]],
+          viz_geo_apps_month = proj.imgs[["viz_geo_apps_month"]],
+          viz_geo_apps_week = proj.imgs[["viz_geo_apps_week"]],
+          timeDayUse_app_year = proj.imgs[["timeDayUse_app_year"]],
+          timeDayUse_app_month = proj.imgs[["timeDayUse_app_month"]],
+          timeDayUse_app_week = proj.imgs[["timeDayUse_app_week"]],
+          app_time_year = table.html["year"],
+          app_time_month = table.html["month"],
+          app_time_week = table.html["week"],
+          previous_link = prevLink,
+          next_link = nextLink
       ))
     )
     contents <- as.viz(contents)
     contents <- as.publisher(contents)
-    
+
     depends <- viz[['depends']]
     depends[[sectionId]] <- contents
-    
+
     pub <- list(
       id = paste0(viewID, "-page"),
       name = proj$shortName,
@@ -90,7 +143,7 @@ publish.projectpage <- function(viz = as.viz("projectPages")) {
         sections = sectionId
       )
     )
-    
+
     pub <- as.viz(pub)
     pub <- as.publisher(pub)
     publish(pub)
@@ -100,9 +153,9 @@ publish.projectpage <- function(viz = as.viz("projectPages")) {
 publish.projectlist <- function(viz = as.viz("project_list")) {
   required <- c("template")
   checkRequired(viz, required)
-  
+
   deps <- readDepends(viz)
-  
+
   template <- template(viz[['template']])
   context <- list(projects = deps[['project_links']])
   viz[['output']] <- render(template, context)
